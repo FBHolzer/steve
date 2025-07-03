@@ -39,9 +39,9 @@
         <flyway.version>10.16.0</flyway.version>
         <cxf.version>3.5.5</cxf.version>
         <spring.version>5.3.37</spring.version>
-        <spring.security.version>5.7.11</spring.security.version>
-        <mysql.jdbc.version>8.0.30</mysql.jdbc.version>
-        <jetty.version>10.0.14</jetty.version>
+        <spring.security.version>5.7.13</spring.security.version>
+        <mysql.jdbc.version>8.0.31</mysql.jdbc.version>
+        <jetty.version>10.0.24</jetty.version>
         <lombok.version>1.18.34</lombok.version>
         <jackson.version>2.17.2</jackson.version>
         <plugin.license-maven.version>4.5</plugin.license-maven.version>
