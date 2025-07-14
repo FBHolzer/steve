@@ -37,9 +37,9 @@
 
         <jooq.version>3.19.10</jooq.version>
         <flyway.version>10.16.0</flyway.version>
-        <cxf.version>3.5.5</cxf.version>
+        <cxf.version>3.5.10</cxf.version>
         <spring.version>5.3.37</spring.version>
-        <spring.security.version>5.7.13</spring.security.version>
+        <spring.security.version>6.3.8</spring.security.version>
         <mysql.jdbc.version>8.0.31</mysql.jdbc.version>
         <jetty.version>10.0.24</jetty.version>
         <lombok.version>1.18.34</lombok.version>
@@ -558,7 +558,7 @@
         <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
-            <version>6.1.7.Final</version>
+            <version>6.2.0.Final</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
