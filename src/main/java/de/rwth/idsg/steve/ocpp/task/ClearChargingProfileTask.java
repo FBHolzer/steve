@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,45 +20,43 @@ package de.rwth.idsg.steve.ocpp.task;
 
 import de.rwth.idsg.steve.ocpp.Ocpp16AndAboveTask;
 import de.rwth.idsg.steve.ocpp.OcppCallback;
-import de.rwth.idsg.steve.ocpp.OcppVersion;
 import de.rwth.idsg.steve.repository.ChargingProfileRepository;
 import de.rwth.idsg.steve.web.dto.ocpp.ClearChargingProfileFilterType;
 import de.rwth.idsg.steve.web.dto.ocpp.ClearChargingProfileParams;
 import lombok.extern.slf4j.Slf4j;
 import ocpp.cp._2015._10.ClearChargingProfileRequest;
+import ocpp.cp._2015._10.ClearChargingProfileStatus;
 
-import javax.xml.ws.AsyncHandler;
+import jakarta.xml.ws.AsyncHandler;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
  * @since 13.03.2018
  */
 @Slf4j
-public class ClearChargingProfileTask extends Ocpp16AndAboveTask<ClearChargingProfileParams, String> {
+public class ClearChargingProfileTask extends Ocpp16AndAboveTask<ClearChargingProfileParams, ClearChargingProfileStatus> {
 
     private final ChargingProfileRepository chargingProfileRepository;
 
-    public ClearChargingProfileTask(OcppVersion ocppVersion,
-                                    ClearChargingProfileParams params,
+    public ClearChargingProfileTask(ClearChargingProfileParams params,
                                     ChargingProfileRepository chargingProfileRepository) {
-        super(ocppVersion, params);
+        super(params);
         this.chargingProfileRepository = chargingProfileRepository;
     }
 
     @Override
-    public OcppCallback<String> defaultCallback() {
-        return new DefaultOcppCallback<String>() {
+    public OcppCallback<ClearChargingProfileStatus> defaultCallback() {
+        return new DefaultOcppCallback<ClearChargingProfileStatus>() {
             @Override
-            public void success(String chargeBoxId, String statusValue) {
-                addNewResponse(chargeBoxId, statusValue);
+            public void success(String chargeBoxId, ClearChargingProfileStatus status) {
+                addNewResponse(chargeBoxId, status.value());
 
                 switch (params.getFilterType()) {
                     case ChargingProfileId:
                         chargingProfileRepository.clearProfile(params.getChargingProfilePk(), chargeBoxId);
                         break;
                     case OtherParameters:
-                        chargingProfileRepository.clearProfile(chargeBoxId,
-                        params.getConnectorId(), params.getChargingProfilePurpose(), params.getStackLevel());
+                        chargingProfileRepository.clearProfile(chargeBoxId, params.getConnectorId(), params.getChargingProfilePurpose(), params.getStackLevel());
                         break;
                     default:
                         log.warn("Unexpected {} enum value", ClearChargingProfileFilterType.class.getSimpleName());
@@ -66,8 +64,8 @@ public class ClearChargingProfileTask extends Ocpp16AndAboveTask<ClearChargingPr
                 }
 
                 // https://github.com/steve-community/steve/pull/968
-                if (!"Accepted".equalsIgnoreCase(statusValue)) {
-                    log.info("Deleted charging profile(s) for chargebox '{}' from DB even though the response was {}", chargeBoxId, statusValue);
+                if (ClearChargingProfileStatus.ACCEPTED != status) {
+                    log.info("Deleted charging profile(s) for chargebox '{}' from DB even though the response was {}", chargeBoxId, status);
                 }
             }
         };
@@ -86,7 +84,7 @@ public class ClearChargingProfileTask extends Ocpp16AndAboveTask<ClearChargingPr
     public AsyncHandler<ocpp.cp._2015._10.ClearChargingProfileResponse> getOcpp16Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, res.get().getStatus().value());
+                success(chargeBoxId, res.get().getStatus());
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }

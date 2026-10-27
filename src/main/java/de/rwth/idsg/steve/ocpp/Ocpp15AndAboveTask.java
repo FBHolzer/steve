@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,8 @@ import de.rwth.idsg.ocpp.jaxb.RequestType;
 import de.rwth.idsg.ocpp.jaxb.ResponseType;
 import de.rwth.idsg.steve.web.dto.ocpp.ChargePointSelection;
 
-import javax.xml.ws.AsyncHandler;
+import jakarta.xml.ws.AsyncHandler;
+import java.util.Map;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
@@ -30,8 +31,12 @@ import javax.xml.ws.AsyncHandler;
  */
 public abstract class Ocpp15AndAboveTask<S extends ChargePointSelection, RESPONSE> extends CommunicationTask<S, RESPONSE> {
 
-    public Ocpp15AndAboveTask(OcppVersion ocppVersion, S params) {
-        super(ocppVersion, params);
+    public Ocpp15AndAboveTask(S params) {
+        super(params);
+    }
+
+    public Ocpp15AndAboveTask(S params, Map<String, String> customDetails) {
+        super(params, customDetails);
     }
 
     @Deprecated

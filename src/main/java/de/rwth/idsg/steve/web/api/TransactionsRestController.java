@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,53 +18,118 @@
  */
 package de.rwth.idsg.steve.web.api;
 
-import de.rwth.idsg.steve.repository.TransactionRepository;
+import de.rwth.idsg.steve.SteveException;
 import de.rwth.idsg.steve.repository.dto.Transaction;
+import de.rwth.idsg.steve.repository.dto.TransactionDetails;
+import de.rwth.idsg.steve.service.TransactionReportService;
+import de.rwth.idsg.steve.service.TransactionService;
 import de.rwth.idsg.steve.web.api.ApiControllerAdvice.ApiErrorResponse;
-import de.rwth.idsg.steve.web.api.exception.BadRequestException;
 import de.rwth.idsg.steve.web.dto.TransactionQueryForm;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import de.rwth.idsg.steve.web.dto.TransactionReportRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
  * @since 13.09.2022
  */
+@Tag(name = "transaction-controller",
+    description = """
+        Operations related to querying transactions.
+        A transaction represents a charging session at a charge box (i.e. charging station. The notions 'charge box' and 'charging station' are being used interchangeably).
+        """
+)
 @Slf4j
 @RestController
 @RequestMapping(value = "/api/v1/transactions", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class TransactionsRestController {
 
-    private final TransactionRepository transactionRepository;
+    private final TransactionService transactionService;
+    private final TransactionReportService transactionReportService;
 
+    @Operation(description = """
+        Returns a list of transactions based on the query parameters.
+        The query parameters can be used to filter the transactions.
+        """)
     @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "OK"),
-        @ApiResponse(code = 400, message = "Bad Request", response = ApiErrorResponse.class),
-        @ApiResponse(code = 401, message = "Unauthorized", response = ApiErrorResponse.class),
-        @ApiResponse(code = 500, message = "Internal Server Error", response = ApiErrorResponse.class)}
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Bad Request", content = {@Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))}),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))}),
+        @ApiResponse(responseCode = "500", description = "Internal Server Error", content = {@Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))})}
     )
     @GetMapping(value = "")
-    @ResponseBody
-    public List<Transaction> get(@Valid TransactionQueryForm.ForApi params) {
+    public List<Transaction> get(@Valid @ParameterObject TransactionQueryForm.TransactionQueryFormForApi params) {
         log.debug("Read request for query: {}", params);
 
         if (params.isReturnCSV()) {
-            throw new BadRequestException("returnCSV=true is not supported for API calls");
+            throw new SteveException.BadRequest("returnCSV=true is not supported for API calls");
         }
 
-        var response = transactionRepository.getTransactions(params);
+        var response = transactionService.getTransactions(params);
         log.debug("Read response for query: {}", response);
         return response;
+    }
+
+    @Operation(description = """
+        Returns the details of a single transaction based on the transactionPk.
+        The details are the intermediate values of the transaction.
+        """)
+    @GetMapping(value = "/{transactionPk}")
+    public TransactionDetails getTransactionDetails(@PathVariable("transactionPk") int transactionPk,
+                                                    @RequestParam(value = "energyValuesOnly", defaultValue = "true") boolean energyValuesOnly) {
+        return transactionService.getDetails(transactionPk, energyValuesOnly);
+    }
+
+    @Operation(description = """
+        Manually changes this transaction from 'active' to 'stopped'.
+        """)
+    @PatchMapping(value = "/{transactionPk}/stop")
+    public void stopTransaction(@PathVariable("transactionPk") int transactionPk) {
+        transactionService.stop(transactionPk);
+    }
+
+    @Operation(description = """
+        Returns charging consumption data as CSV between the given 'from' and 'to' timestamps.
+        All transactions that stopped between the given timestamps are included.
+        The exported data can be used for reports or can be imported into 3rd party payment/billing systems.
+        """)
+    @ApiResponse(
+        responseCode = "200",
+        content = @Content(
+            mediaType = "text/csv",
+            schema = @Schema(type = "string", format = "binary")
+        )
+    )
+    @GetMapping(value = "/reports/csv", produces = "text/csv")
+    public void getTransactionReportCsv(@Valid @ParameterObject TransactionReportRequest dto,
+                                        HttpServletResponse response) throws IOException {
+        String fileName = "transaction_report.csv";
+        String headerKey = "Content-Disposition";
+        String headerValue = "attachment; filename=\"%s\"".formatted(fileName);
+
+        response.setContentType("text/csv");
+        response.setHeader(headerKey, headerValue);
+
+        transactionReportService.getTransactionReportCsv(dto.getFrom(), dto.getTo(), response.getWriter());
     }
 }

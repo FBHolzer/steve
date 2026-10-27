@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,15 +18,21 @@
  */
 package de.rwth.idsg.steve.utils;
 
+import de.rwth.idsg.steve.SteveException;
+import de.rwth.idsg.steve.web.dto.QueryPeriodFromToFilter;
+import de.rwth.idsg.steve.web.dto.QueryPeriodType;
+import de.rwth.idsg.steve.web.dto.QueryPeriodTypeFilter;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.joda.time.DateTime;
 import org.jooq.Condition;
-import org.jooq.DSLContext;
+import org.jooq.DataType;
 import org.jooq.DatePart;
 import org.jooq.Field;
 import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
+import jakarta.annotation.Nullable;
 import java.sql.Timestamp;
 
 import static org.jooq.impl.DSL.field;
@@ -38,12 +44,15 @@ import static org.jooq.impl.DSL.field;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CustomDSL {
 
+    // https://github.com/steve-community/steve/issues/1520
+    public static final DataType<DateTime> DATE_TIME_TYPE = SQLDataType.TIMESTAMP.asConvertedDataType(new DateTimeConverter());
+
     public static Field<DateTime> date(DateTime dt) {
-        return date(DSL.val(dt, DateTime.class));
+        return date(DSL.val(dt, DATE_TIME_TYPE));
     }
 
     public static Field<DateTime> date(Field<DateTime> dt) {
-        return field("date({0})", DateTime.class, dt);
+        return field("date({0})", DATE_TIME_TYPE, dt);
     }
 
     /**
@@ -66,24 +75,47 @@ public final class CustomDSL {
         return field.like("%" + input + "%");
     }
 
-    public static Long selectOffsetFromUtcInSeconds(DSLContext ctx) {
-        return ctx.select(timestampDiffBetweenUtcAndCurrent(DatePart.SECOND))
-                  .fetchOne()
-                  .getValue(0, Long.class);
-    }
-
-    private static Field<Long> timestampDiffBetweenUtcAndCurrent(DatePart part) {
-        return timestampDiff(part, utcTimestamp(), DSL.currentTimestamp());
-    }
-
     /**
      * Taken from https://github.com/jOOQ/jOOQ/issues/4303#issuecomment-105519975
      */
-    private static Field<Long> timestampDiff(DatePart part, Field<Timestamp> t1, Field<Timestamp> t2) {
+    public static Field<Long> timestampDiff(DatePart part, Field<Timestamp> t1, Field<Timestamp> t2) {
         return field("timestampdiff({0}, {1}, {2})", Long.class, DSL.keyword(part.toSQL()), t1, t2);
     }
 
-    private static Field<Timestamp> utcTimestamp() {
+    public static Field<Timestamp> utcTimestamp() {
         return field("{utc_timestamp()}", Timestamp.class);
+    }
+
+    @Nullable
+    public static Condition getTimeCondition(Field<DateTime> timestampField, QueryPeriodTypeFilter form) {
+        return getTimeCondition(timestampField, form, form.getPeriodType());
+    }
+
+    @Nullable
+    public static Condition getTimeCondition(Field<DateTime> timestampField, QueryPeriodFromToFilter form,
+                                             QueryPeriodType periodType) {
+        switch (periodType) {
+            case TODAY:
+                return date(timestampField).eq(date(DateTime.now()));
+
+            case LAST_10:
+            case LAST_30:
+            case LAST_90:
+                DateTime now = DateTime.now();
+                return date(timestampField).between(
+                    date(now.minusDays(periodType.getInterval())),
+                    date(now)
+                );
+
+            case ALL:
+                return null;
+
+            case FROM_TO:
+                DateTime from = form.getFrom();
+                DateTime to = form.getTo();
+                return timestampField.between(from, to);
+            default:
+                throw new SteveException("Unknown enum type");
+        }
     }
 }

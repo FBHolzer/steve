@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,33 +20,37 @@ package de.rwth.idsg.steve.ocpp.task;
 
 import de.rwth.idsg.steve.ocpp.CommunicationTask;
 import de.rwth.idsg.steve.ocpp.OcppCallback;
-import de.rwth.idsg.steve.ocpp.OcppVersion;
 import de.rwth.idsg.steve.web.dto.ocpp.UpdateFirmwareParams;
 
-import javax.xml.ws.AsyncHandler;
+import jakarta.xml.ws.AsyncHandler;
 
-import static de.rwth.idsg.steve.utils.DateTimeUtils.toDateTime;
+import static de.rwth.idsg.steve.ocpp.task.UpdateFirmwareTask.UpdateFirmwareResponseStatus;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
  * @since 09.03.2018
  */
-public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, String> {
+public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, UpdateFirmwareResponseStatus> {
 
-    public UpdateFirmwareTask(OcppVersion ocppVersion, UpdateFirmwareParams params) {
-        super(ocppVersion, params);
+    public UpdateFirmwareTask(UpdateFirmwareParams params) {
+        super(params);
     }
 
     @Override
-    public OcppCallback<String> defaultCallback() {
-        return new StringOcppCallback();
+    public OcppCallback<UpdateFirmwareResponseStatus> defaultCallback() {
+        return new DefaultOcppCallback<UpdateFirmwareResponseStatus>() {
+            @Override
+            public void success(String chargeBoxId, UpdateFirmwareResponseStatus response) {
+                addNewResponse(chargeBoxId, response.name());
+            }
+        };
     }
 
     @Override
     public ocpp.cp._2010._08.UpdateFirmwareRequest getOcpp12Request() {
         return new ocpp.cp._2010._08.UpdateFirmwareRequest()
                 .withLocation(params.getLocation())
-                .withRetrieveDate(toDateTime(params.getRetrieve()))
+                .withRetrieveDate(params.getRetrieveDateTime())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval());
     }
@@ -55,7 +59,7 @@ public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, 
     public ocpp.cp._2012._06.UpdateFirmwareRequest getOcpp15Request() {
         return new ocpp.cp._2012._06.UpdateFirmwareRequest()
                 .withLocation(params.getLocation())
-                .withRetrieveDate(toDateTime(params.getRetrieve()))
+                .withRetrieveDate(params.getRetrieveDateTime())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval());
     }
@@ -64,7 +68,7 @@ public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, 
     public ocpp.cp._2015._10.UpdateFirmwareRequest getOcpp16Request() {
         return new ocpp.cp._2015._10.UpdateFirmwareRequest()
                 .withLocation(params.getLocation())
-                .withRetrieveDate(toDateTime(params.getRetrieve()))
+                .withRetrieveDate(params.getRetrieveDateTime())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval());
     }
@@ -73,7 +77,7 @@ public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, 
     public AsyncHandler<ocpp.cp._2010._08.UpdateFirmwareResponse> getOcpp12Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, "OK");
+                success(chargeBoxId, UpdateFirmwareResponseStatus.OK);
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
@@ -84,7 +88,7 @@ public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, 
     public AsyncHandler<ocpp.cp._2012._06.UpdateFirmwareResponse> getOcpp15Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, "OK");
+                success(chargeBoxId, UpdateFirmwareResponseStatus.OK);
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
@@ -95,11 +99,15 @@ public class UpdateFirmwareTask extends CommunicationTask<UpdateFirmwareParams, 
     public AsyncHandler<ocpp.cp._2015._10.UpdateFirmwareResponse> getOcpp16Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, "OK");
+                success(chargeBoxId, UpdateFirmwareResponseStatus.OK);
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
         };
+    }
+
+    public enum UpdateFirmwareResponseStatus {
+        OK
     }
 
 }

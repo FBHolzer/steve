@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,14 +24,16 @@ import de.rwth.idsg.steve.web.dto.OcppTagQueryForm;
 import jooq.steve.db.tables.records.OcppTagActivityRecord;
 import org.jooq.Result;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
  * @since 19.08.2014
  */
 public interface OcppTagRepository {
-    List<OcppTag.Overview> getOverview(OcppTagQueryForm form);
+    List<OcppTag.OcppTagOverview> getOverview(OcppTagQueryForm form);
 
     Result<OcppTagActivityRecord> getRecords();
     Result<OcppTagActivityRecord> getRecords(List<String> idTagList);
@@ -40,10 +42,12 @@ public interface OcppTagRepository {
     OcppTagActivityRecord getRecord(int ocppTagPk);
 
     List<String> getIdTags();
+    List<String> getIdTags(List<String> idTagList);
+    List<String> getIdTagsWithoutUser();
     List<String> getActiveIdTags();
 
     List<String> getParentIdTags();
-    String getParentIdtag(String idTag);
+    Map<String, String> getParentIdTags(Collection<String> idTags);
 
     void addOcppTagList(List<String> idTagList);
     int addOcppTag(OcppTagForm form);

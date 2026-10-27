@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,21 +19,42 @@
 package de.rwth.idsg.steve.utils;
 
 import com.google.common.base.Strings;
+import de.rwth.idsg.steve.repository.dto.Transaction;
 import de.rwth.idsg.steve.repository.dto.TransactionDetails;
+import lombok.extern.slf4j.Slf4j;
 import ocpp.cs._2015._10.Measurand;
 import ocpp.cs._2015._10.UnitOfMeasure;
 import ocpp.cs._2015._10.ValueFormat;
 
+@Slf4j
 public class TransactionStopServiceHelper {
+
+    public static Double calculateEnergyConsumptionInKWh(Transaction t) {
+        if (t.getStopValue() == null) {
+            return null; // this transaction did not finish yet
+        }
+
+        try {
+            Integer meterValueStop = Integer.valueOf(t.getStopValue());
+            Integer meterValueStart = Integer.valueOf(t.getStartValue());
+            return (meterValueStop - meterValueStart) / 1000.0; // --> kWh
+        } catch (Exception e) {
+            log.error("Failed to calculate charged energy", e);
+            return null;
+        }
+    }
 
     public static String floatingStringToIntString(String s) {
         // meter values can be floating, whereas start/end values are int
         return Integer.toString((int) Math.ceil(Double.parseDouble(s)));
     }
 
+    public static double kWhStringToWhDouble(String s) {
+        return Double.parseDouble(s) * 1000;
+    }
+
     public static String kWhStringToWhString(String s) {
-        double kWhValue = Double.parseDouble(s);
-        return Double.toString(kWhValue * 1000);
+        return Double.toString(kWhStringToWhDouble(s));
     }
 
     public static boolean isEnergyValue(TransactionDetails.MeterValues v) {
@@ -51,40 +72,49 @@ public class TransactionStopServiceHelper {
             return false;
         }
 
-        // from 1.6 docs: "To retain backward compatibility, the default values of all of the optional fields on a
-        // sampledValue element are such that a value without any additional fields will be interpreted, as a register
-        // reading of active import energy in Wh (Watt-hour) units."
-        if (Strings.isNullOrEmpty(v.getReadingContext())
-            && Strings.isNullOrEmpty(v.getFormat())
-            && Strings.isNullOrEmpty(v.getMeasurand())
-            && Strings.isNullOrEmpty(v.getLocation())
-            && Strings.isNullOrEmpty(v.getUnit())
-            && Strings.isNullOrEmpty(v.getPhase())) {
-            return true;
+        // edge case handling for format
+        {
+            ValueFormat format = Strings.isNullOrEmpty(v.getFormat())
+                ? ValueFormat.RAW
+                : ValueFormat.fromValue(v.getFormat());
+
+            // if the format is "SignedData", we cannot make any sense of this entry. we don't know how to decode it.
+            // https://github.com/steve-community/steve/issues/816
+            if (ValueFormat.SIGNED_DATA == format) {
+                return false;
+            }
         }
 
-        // if the format is "SignedData", we cannot make any sense of this entry. we don't know how to decode it.
-        // https://github.com/steve-community/steve/issues/816
-        if (ValueFormat.SIGNED_DATA.value().equals(v.getFormat())) {
-            return false;
+        // edge case handling for measurand
+        {
+            Measurand measurand = Strings.isNullOrEmpty(v.getMeasurand())
+                ? Measurand.ENERGY_ACTIVE_IMPORT_REGISTER
+                : Measurand.fromValue(v.getMeasurand());
+
+            if (Measurand.ENERGY_ACTIVE_IMPORT_REGISTER != measurand) {
+                return false;
+            }
         }
 
-        if (!isWHOrKWH(v.getUnit())) {
-            return false;
-        }
+        // edge case handling for unit
+        {
+            UnitOfMeasure unit = Strings.isNullOrEmpty(v.getUnit())
+                ? UnitOfMeasure.WH
+                : UnitOfMeasure.fromValue(v.getUnit());
 
-        if (!Measurand.ENERGY_ACTIVE_IMPORT_REGISTER.value().equals(v.getMeasurand())) {
-            return false;
+            if (!isWHOrKWH(unit)) {
+                return false;
+            }
         }
 
         // at this point, we have a value with
-        // - RAW or null format
+        // - RAW format
         // - Wh or kWh unit
         // - Energy.Active.Import.Register as the measurand
         return true;
     }
 
-    private static boolean isWHOrKWH(String str) {
-        return UnitOfMeasure.WH.value().equals(str) || UnitOfMeasure.K_WH.value().equals(str);
+    private static boolean isWHOrKWH(UnitOfMeasure unit) {
+        return UnitOfMeasure.WH == unit || UnitOfMeasure.K_WH == unit;
     }
 }

@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,12 +18,13 @@
  */
 package de.rwth.idsg.steve.service;
 
+import de.rwth.idsg.steve.SteveException;
 import de.rwth.idsg.steve.repository.dto.ChargePointSelect;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.task.TaskExecutor;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
@@ -32,13 +33,17 @@ import java.util.function.Consumer;
  */
 @RequiredArgsConstructor
 public class BackgroundService {
-    private final ExecutorService executorService;
 
-    public static BackgroundService with(ExecutorService executorService) {
-        return new BackgroundService(executorService);
+    private final TaskExecutor taskExecutor;
+
+    public static BackgroundService with(TaskExecutor taskExecutor) {
+        return new BackgroundService(taskExecutor);
     }
 
     public Runner forFirst(List<ChargePointSelect> list) {
+        if (list.size() != 1) {
+            throw new SteveException.BadRequest("This operation is for one station only");
+        }
         return new BackgroundSingleRunner(list.get(0));
     }
 
@@ -56,7 +61,7 @@ public class BackgroundService {
 
         @Override
         public void execute(Consumer<ChargePointSelect> consumer) {
-            executorService.execute(() -> consumer.accept(cps));
+            taskExecutor.execute(() -> consumer.accept(cps));
         }
     }
 
@@ -66,7 +71,7 @@ public class BackgroundService {
 
         @Override
         public void execute(Consumer<ChargePointSelect> consumer) {
-            executorService.execute(() -> list.forEach(consumer));
+            taskExecutor.execute(() -> list.forEach(consumer));
         }
     }
 }

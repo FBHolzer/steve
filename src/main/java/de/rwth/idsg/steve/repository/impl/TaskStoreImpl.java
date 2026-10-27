@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,8 +26,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -78,10 +80,35 @@ public class TaskStoreImpl implements TaskStore {
     }
 
     @Override
+    public List<CommunicationTask> getFinished() {
+        return lookupTable.values()
+            .stream()
+            .filter(CommunicationTask::isFinished)
+            .toList();
+    }
+
+    @Override
+    public List<CommunicationTask> getUnfinished() {
+        return lookupTable.values()
+            .stream()
+            .filter(task -> !task.isFinished())
+            .toList();
+    }
+
+    @Override
     public void clearFinished() {
+        removeTasks(entry -> entry.getValue().isFinished());
+    }
+
+    @Override
+    public void clearUnfinished() {
+        removeTasks(entry -> !entry.getValue().isFinished());
+    }
+
+    private void removeTasks(Predicate<Map.Entry<Integer, CommunicationTask>> filterPredicate) {
         lookupTable.entrySet()
                    .stream()
-                   .filter(entry -> entry.getValue().isFinished())
+                   .filter(filterPredicate)
                    .forEach(entry -> lookupTable.remove(entry.getKey()));
     }
 }

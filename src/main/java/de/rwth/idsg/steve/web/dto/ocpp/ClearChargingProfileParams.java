@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,14 +18,15 @@
  */
 package de.rwth.idsg.steve.web.dto.ocpp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import ocpp.cp._2015._10.ChargingProfilePurposeType;
 
-import javax.validation.constraints.AssertTrue;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Positive;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
@@ -50,6 +51,7 @@ public class ClearChargingProfileParams extends MultipleChargePointSelect {
 
     private Integer stackLevel;
 
+    @JsonIgnore
     @AssertTrue(message = "When filtering by id, charging profile id must be set")
     public boolean isValidWhenFilterById() {
         return filterType != ClearChargingProfileFilterType.ChargingProfileId || chargingProfilePk != null;

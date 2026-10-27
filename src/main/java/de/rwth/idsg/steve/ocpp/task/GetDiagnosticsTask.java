@@ -1,6 +1,6 @@
 /*
  * SteVe - SteckdosenVerwaltung - https://github.com/steve-community/steve
- * Copyright (C) 2013-2024 SteVe Community Team
+ * Copyright (C) 2013-2026 SteVe Community Team
  * All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,26 +20,29 @@ package de.rwth.idsg.steve.ocpp.task;
 
 import de.rwth.idsg.steve.ocpp.CommunicationTask;
 import de.rwth.idsg.steve.ocpp.OcppCallback;
-import de.rwth.idsg.steve.ocpp.OcppVersion;
 import de.rwth.idsg.steve.web.dto.ocpp.GetDiagnosticsParams;
+import org.apache.commons.lang3.StringUtils;
 
-import javax.xml.ws.AsyncHandler;
-
-import static de.rwth.idsg.steve.utils.DateTimeUtils.toDateTime;
+import jakarta.xml.ws.AsyncHandler;
 
 /**
  * @author Sevket Goekay <sevketgokay@gmail.com>
  * @since 09.03.2018
  */
-public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, String> {
+public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, ocpp.cp._2015._10.GetDiagnosticsResponse> {
 
-    public GetDiagnosticsTask(OcppVersion ocppVersion, GetDiagnosticsParams params) {
-        super(ocppVersion, params);
+    public GetDiagnosticsTask(GetDiagnosticsParams params) {
+        super(params);
     }
 
     @Override
-    public OcppCallback<String> defaultCallback() {
-        return new StringOcppCallback();
+    public OcppCallback<ocpp.cp._2015._10.GetDiagnosticsResponse> defaultCallback() {
+        return new DefaultOcppCallback<ocpp.cp._2015._10.GetDiagnosticsResponse>() {
+            @Override
+            public void success(String chargeBoxId, ocpp.cp._2015._10.GetDiagnosticsResponse response) {
+                addNewResponse(chargeBoxId, "filename: " + StringUtils.defaultString(response.getFileName()));
+            }
+        };
     }
 
     @Override
@@ -48,8 +51,8 @@ public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, 
                 .withLocation(params.getLocation())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval())
-                .withStartTime(toDateTime(params.getStart()))
-                .withStopTime(toDateTime(params.getStop()));
+                .withStartTime(params.getStart())
+                .withStopTime(params.getStop());
     }
 
     @Override
@@ -58,8 +61,8 @@ public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, 
                 .withLocation(params.getLocation())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval())
-                .withStartTime(toDateTime(params.getStart()))
-                .withStopTime(toDateTime(params.getStop()));
+                .withStartTime(params.getStart())
+                .withStopTime(params.getStop());
     }
 
     @Override
@@ -68,15 +71,16 @@ public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, 
                 .withLocation(params.getLocation())
                 .withRetries(params.getRetries())
                 .withRetryInterval(params.getRetryInterval())
-                .withStartTime(toDateTime(params.getStart()))
-                .withStopTime(toDateTime(params.getStop()));
+                .withStartTime(params.getStart())
+                .withStopTime(params.getStop());
     }
 
     @Override
     public AsyncHandler<ocpp.cp._2010._08.GetDiagnosticsResponse> getOcpp12Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, res.get().getFileName());
+                var data = new ocpp.cp._2015._10.GetDiagnosticsResponse().withFileName(res.get().getFileName());
+                success(chargeBoxId, data);
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
@@ -87,7 +91,8 @@ public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, 
     public AsyncHandler<ocpp.cp._2012._06.GetDiagnosticsResponse> getOcpp15Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, res.get().getFileName());
+                var data = new ocpp.cp._2015._10.GetDiagnosticsResponse().withFileName(res.get().getFileName());
+                success(chargeBoxId, data);
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
@@ -98,7 +103,7 @@ public class GetDiagnosticsTask extends CommunicationTask<GetDiagnosticsParams, 
     public AsyncHandler<ocpp.cp._2015._10.GetDiagnosticsResponse> getOcpp16Handler(String chargeBoxId) {
         return res -> {
             try {
-                success(chargeBoxId, res.get().getFileName());
+                success(chargeBoxId, res.get());
             } catch (Exception e) {
                 failed(chargeBoxId, e);
             }
